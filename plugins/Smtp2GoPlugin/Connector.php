@@ -30,16 +30,34 @@ class Connector
     /** @var string Base URL */
     private $baseUrl;
 
+    /** @var curl handle */
+    private $curl = null;
+
+    /** @var bool whether to verify certificate */
+    private $verifyPeer;
+
     /**
      * Constructor.
      *
      * @param string $apiKey  the API key to use
      * @param string $baseUrl the SMTP2GO API base url
      */
-    public function __construct($apiKey, $baseUrl)
+    public function __construct($apiKey, $baseUrl, $verifyPeer)
     {
         $this->apiKey = $apiKey;
         $this->baseUrl = $baseUrl;
+        $this->verifyPeer = $verifyPeer;
+    }
+
+    /**
+     * Destructor.
+     * Close the curl connection.
+     */
+    public function __destruct()
+    {
+        if ($this->curl !== null) {
+            curl_close($this->curl);
+        }
     }
 
     /**
@@ -51,40 +69,39 @@ class Connector
      */
     public function mimeEmail($mimeMessage)
     {
-        static $curl = null;
-
-        if ($curl === null) {
+        if ($this->curl === null) {
             $headers = [
                 'Content-Type: ' . 'application/json',
             ];
             $endpoint = $this->baseUrl . '/email/mime';
-            $curl = curl_init($endpoint);
-            curl_setopt($curl, CURLOPT_CUSTOMREQUEST, 'POST');
-            curl_setopt($curl, CURLOPT_HTTPHEADER, $headers);
-            curl_setopt($curl, CURLOPT_HEADER, false);
-            curl_setopt($curl, CURLOPT_USERAGENT, NAME . ' (phpList version ' . VERSION . ', http://www.phplist.com/)');
-            curl_setopt($curl, CURLOPT_ENCODING, 'gzip,deflate');
-            curl_setopt($curl, CURLOPT_RETURNTRANSFER, true);
+            $this->curl = curl_init($endpoint);
+            curl_setopt($this->curl, CURLOPT_CUSTOMREQUEST, 'POST');
+            curl_setopt($this->curl, CURLOPT_HTTPHEADER, $headers);
+            curl_setopt($this->curl, CURLOPT_HEADER, false);
+            curl_setopt($this->curl, CURLOPT_USERAGENT, NAME . ' (phpList version ' . VERSION . ', http://www.phplist.com/)');
+            curl_setopt($this->curl, CURLOPT_ENCODING, 'gzip,deflate');
+            curl_setopt($this->curl, CURLOPT_RETURNTRANSFER, true);
+            curl_setopt($this->curl, CURLOPT_SSL_VERIFYPEER, $this->verifyPeer);
         }
         $request = [
             'api_key' => $this->apiKey,
-            'mime_email' => $mimeMessage,
+            'mime_email' => base64_encode($mimeMessage),
         ];
         $request = json_encode($request);
-        curl_setopt($curl, CURLOPT_POSTFIELDS, $request);
-        $curlResult = curl_exec($curl);
+        curl_setopt($this->curl, CURLOPT_POSTFIELDS, $request);
+        $curlResult = curl_exec($this->curl);
 
         if ($curlResult === false) {
             $result = [
                 'status' => false,
                 'response' => '',
-                'error' => curl_error($curl),
+                'error' => curl_error($this->curl),
             ];
-            curl_close($curl);
-            $curl = null;
+            curl_close($this->curl);
+            $this->curl = null;
         } else {
             $result = [
-                'status' => curl_getinfo($curl, CURLINFO_HTTP_CODE),
+                'status' => curl_getinfo($this->curl, CURLINFO_HTTP_CODE),
                 'response' => $curlResult,
                 'error' => '',
             ];

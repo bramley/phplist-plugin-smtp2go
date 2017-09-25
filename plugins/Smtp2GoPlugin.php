@@ -55,6 +55,13 @@ class Smtp2GoPlugin extends phplistPlugin implements EmailSender
             'allowempty' => false,
             'category' => 'SMTP2GO',
         ),
+        'smtp2go_verify_cert' => array(
+            'value' => true,
+            'description' => 'Whether to verify the SMTP2GO certificate',
+            'type' => 'boolean',
+            'allowempty' => true,
+            'category' => 'SMTP2GO',
+        ),
     );
 
     /**
@@ -101,9 +108,13 @@ class Smtp2GoPlugin extends phplistPlugin implements EmailSender
     public function send(PHPlistMailer $phpmailer, $headers, $body)
     {
         if ($this->connector === null) {
-            $this->connector = new phpList\plugin\Smtp2GoPlugin\Connector(getConfig('smtp2go_api_key'), getConfig('smtp2go_api_baseurl'));
+            $this->connector = new phpList\plugin\Smtp2GoPlugin\Connector(
+                getConfig('smtp2go_api_key'),
+                getConfig('smtp2go_api_baseurl'),
+                (bool) getConfig('smtp2go_verify_cert')
+            );
         }
-        $mimeMessage = base64_encode(rtrim($headers, $phpmailer->LE) . $phpmailer->LE . $phpmailer->LE . $body);
+        $mimeMessage = rtrim($headers, $phpmailer->LE) . $phpmailer->LE . $phpmailer->LE . $body;
         $result = $this->connector->mimeEmail($mimeMessage);
         $status = $result['status'];
 
