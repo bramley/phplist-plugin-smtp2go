@@ -73,9 +73,9 @@ class Connector
             $headers = [
                 'Content-Type: ' . 'application/json',
             ];
-            $endpoint = $this->baseUrl . '/email/mime';
+            $endpoint = $this->baseUrl . 'email/mime';
             $this->curl = curl_init($endpoint);
-            curl_setopt($this->curl, CURLOPT_CUSTOMREQUEST, 'POST');
+            curl_setopt($this->curl, CURLOPT_POST, true);
             curl_setopt($this->curl, CURLOPT_HTTPHEADER, $headers);
             curl_setopt($this->curl, CURLOPT_HEADER, false);
             curl_setopt($this->curl, CURLOPT_USERAGENT, NAME . ' (phpList version ' . VERSION . ', http://www.phplist.com/)');
