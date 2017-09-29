@@ -30,8 +30,8 @@ class Smtp2GoPlugin extends phplistPlugin implements EmailSender
 {
     const VERSION_FILE = 'version.txt';
 
-    /** @var SMTP2GO connector instance */
-    private $connector = null;
+    /** @var phpList\plugin\Common\MailSender sender instance */
+    private $mailSender = null;
 
     /*
      *  Inherited variables
@@ -40,29 +40,59 @@ class Smtp2GoPlugin extends phplistPlugin implements EmailSender
     public $authors = 'Duncan Cameron';
     public $description = 'Use SMTP2GO to send emails';
     public $documentationUrl = 'https://resources.phplist.com/plugin/smtp2go';
-    public $settings = array(
-        'smtp2go_api_key' => array(
+    public $settings = [
+        'smtp2go_api_key' => [
             'value' => '',
             'description' => 'API key',
             'type' => 'text',
             'allowempty' => false,
             'category' => 'SMTP2GO',
-        ),
-        'smtp2go_api_baseurl' => array(
+        ],
+        'smtp2go_api_baseurl' => [
             'value' => 'https://api.smtp2go.com/v3/',
             'description' => 'API base URL',
             'type' => 'text',
             'allowempty' => false,
             'category' => 'SMTP2GO',
-        ),
-        'smtp2go_verify_cert' => array(
+        ],
+        'smtp2go_verify_cert' => [
             'value' => true,
             'description' => 'Whether to verify the SMTP2GO certificate',
             'type' => 'boolean',
             'allowempty' => true,
             'category' => 'SMTP2GO',
-        ),
-    );
+        ],
+        'smtp2go_multi' => [
+            'value' => false,
+            'description' => 'Whether to use multi-curl to send emails concurrently',
+            'type' => 'boolean',
+            'allowempty' => true,
+            'category' => 'SMTP2GO',
+        ],
+        'smtp2go_multi_limit' => [
+            'value' => 4,
+            'min' => 2,
+            'max' => 32,
+            'description' => 'The maximum number of emails to send concurrently when using multi-curl, (between 2 and 32)',
+            'type' => 'integer',
+            'allowempty' => false,
+            'category' => 'SMTP2GO',
+        ],
+        'smtp2go_multi_log' => [
+            'value' => false,
+            'description' => 'Whether to create a log file showing all multi-curl transfers',
+            'type' => 'boolean',
+            'allowempty' => true,
+            'category' => 'SMTP2GO',
+        ],
+        'smtp2go_curl_verbose' => [
+            'value' => false,
+            'description' => 'Whether to generate verbose curl output (use only for debugging)',
+            'type' => 'boolean',
+            'allowempty' => true,
+            'category' => 'SMTP2GO',
+        ],
+    ];
 
     /**
      * Constructor.
@@ -83,14 +113,16 @@ class Smtp2GoPlugin extends phplistPlugin implements EmailSender
      */
     public function dependencyCheck()
     {
-        global $emailsenderplugin;
+        global $emailsenderplugin, $plugins;
 
         return array(
             'PHP version 5.4.0 or greater' => version_compare(PHP_VERSION, '5.4') > 0,
             'phpList version 3.3.1 or greater' => version_compare(getConfig('version'), '3.3.1') >= 0,
             'No other plugin to send emails can be enabled' => empty($emailsenderplugin) || get_class($emailsenderplugin) == __CLASS__,
             'curl extension installed' => extension_loaded('curl'),
-            'Common Plugin installed' => phpListPlugin::isEnabled('CommonPlugin'),
+            'Common Plugin version 3.7.0 or later installed' => (
+                phpListPlugin::isEnabled('CommonPlugin') && version_compare($plugins['CommonPlugin']->version, '3.7.0') >= 0
+            ),
         );
     }
 
@@ -105,25 +137,35 @@ class Smtp2GoPlugin extends phplistPlugin implements EmailSender
      *
      * @return bool success/failure
      */
-    public function send(PHPlistMailer $phpmailer, $headers, $body)
+    public function send(PHPlistMailer $phplistmailer, $messageheader, $messagebody)
     {
-        if ($this->connector === null) {
-            $this->connector = new phpList\plugin\Smtp2GoPlugin\Connector(
-                getConfig('smtp2go_api_key'),
+        if ($this->mailSender === null) {
+            $client = new phpList\plugin\Smtp2GoPlugin\MailClient(
                 getConfig('smtp2go_api_baseurl'),
+                getConfig('smtp2go_api_key')
+            );
+
+            $this->mailSender = new phpList\plugin\Common\MailSender(
+                $client,
+                (bool) getConfig('smtp2go_multi'),
+                getConfig('smtp2go_multi_limit'),
+                (bool) getConfig('smtp2go_multi_log'),
+                (bool) getConfig('smtp2go_curl_verbose'),
                 (bool) getConfig('smtp2go_verify_cert')
             );
         }
-        $mimeMessage = rtrim($headers, $phpmailer->LE) . $phpmailer->LE . $phpmailer->LE . $body;
-        $result = $this->connector->mimeEmail($mimeMessage);
-        $status = $result['status'];
 
-        if ($status === false || $status != 200) {
-            logEvent(sprintf('SMTP2GO status: %s, result: %s, curl error: %s', $status, $result['response'], $result['error']));
+        return $this->mailSender->send($phplistmailer, $messageheader, $messagebody);
+    }
 
-            return false;
-        }
-
-        return true;
+    /**
+     * This hook is called within the processqueue shutdown() function.
+     *
+     * For command line processqueue phplist exits in its shutdown function
+     * therefore need to explicitly call the mailsender shutdown method.
+     */
+    public function processSendStats($sent = 0, $invalid = 0, $failed_sent = 0, $unconfirmed = 0, $counters = array())
+    {
+        $this->mailSender->shutdown();
     }
 }

@@ -8,9 +8,10 @@ This plugin sends emails through SMTP2GO using its API.
 
 ### Dependencies ###
 
-This plugin is for phplist 3.3.0 or later and requires php version 5.4 or later.
+This plugin is for phplist 3.3.0 or later and requires php version 5.4 or later and the curl extension.
 
-It also requires the php curl extension to be installed.
+It also requires the Common Plugin version 3.7.0 or later to be installed.
+You should install or upgrade to the latest version. See https://github.com/bramley/phplist-plugin-common
 
 ### Set the plugin directory ###
 The default plugin directory is `plugins` within the admin directory.
@@ -37,4 +38,5 @@ Please raise any questions or problems in the user forum <https://discuss.phplis
 ## Version history ##
 
     version         Description
+    1.1.0+20170929  Allow concurrent requests
     1.0.0+20170717  Initial version

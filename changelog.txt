@@ -1,2 +1,5 @@
+version 1.1.0+20170929
+      Use generic class to send email allowing multiple concurrent requests.
+
 version 1.0.0+20170717
       Initial version
