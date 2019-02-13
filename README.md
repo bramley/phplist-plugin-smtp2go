@@ -38,5 +38,6 @@ Please raise any questions or problems in the user forum <https://discuss.phplis
 ## Version history ##
 
     version         Description
+    1.1.1+20190213  Ensure that multi-curl calls complete
     1.1.0+20170929  Allow concurrent requests
     1.0.0+20170717  Initial version

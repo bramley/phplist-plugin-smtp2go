@@ -166,6 +166,8 @@ class Smtp2GoPlugin extends phplistPlugin implements EmailSender
      */
     public function processSendStats($sent = 0, $invalid = 0, $failed_sent = 0, $unconfirmed = 0, $counters = array())
     {
-        $this->mailSender->shutdown();
+        if ($this->mailSender !== null) {
+            $this->mailSender->shutdown();
+        }
     }
 }
