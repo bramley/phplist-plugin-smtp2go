@@ -1,3 +1,6 @@
+version 1.1.2+20191102
+      Remove dependency on phpmailer line-ending.
+
 version 1.1.1+20190213
       Correct call of MailSender shutdown()
 

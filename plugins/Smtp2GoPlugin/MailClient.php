@@ -43,7 +43,7 @@ class MailClient implements \phpList\plugin\Common\IMailClient
 
     public function requestBody(\PHPlistMailer $phplistmailer, $headers, $body)
     {
-        $mimeMessage = rtrim($headers, $phplistmailer->LE) . $phplistmailer->LE . $phplistmailer->LE . $body;
+        $mimeMessage = rtrim($headers, "\r\n ") . "\r\n\r\n" . $body;
         $request = [
             'api_key' => $this->apiKey,
             'mime_email' => base64_encode($mimeMessage),
